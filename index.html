@@ -19,7 +19,7 @@ h1{font-size:18px;margin:0}.sub{font-size:12px;color:var(--mut);margin-top:4px}.
 .side{padding:20px;height:max-content}.side h2{font-size:15px;margin:0 0 14px}.step{display:flex;gap:10px;margin:14px 0}.n{width:28px;height:28px;border-radius:8px;background:#eaf2fb;color:var(--b);display:grid;place-items:center;font-weight:700;flex:0 0 auto}.step b{font-size:13px}.step p,.note{font-size:12px;line-height:1.5;color:var(--mut);margin:4px 0}.line{height:1px;background:var(--line);margin:16px 0}
 .main{overflow:hidden;min-height:710px;display:flex;flex-direction:column}.head{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.head b{font-size:14px}.head span{font-size:12px;color:var(--mut)}
 .msgs{padding:20px;flex:1;min-height:420px;overflow:auto}.bubble{max-width:920px;padding:13px 15px;border-radius:14px;margin-bottom:12px;white-space:pre-wrap;line-height:1.5;font-size:14px}.bot{background:#f0f5fb;border:1px solid #dbe7f5}.user{background:#e9f7f5;border:1px solid #cceae6;margin-left:auto}.warn{background:#fff7eb;border:1px solid #f1d4a9;color:#6e470d}
-.comp{border-top:1px solid var(--line);padding:16px;background:#fbfcfd}.drop{border:1.5px dashed #adc1d8;border-radius:12px;padding:18px;background:#fff;display:flex;align-items:center;gap:12px;cursor:pointer}.drop:hover{border-color:var(--b)}.ico{width:38px;height:38px;border-radius:10px;background:#edf4fb;display:grid;place-items:center;font-size:20px}.file{margin-left:auto;font-size:12px;color:var(--b);max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.comp{border-top:1px solid var(--line);padding:16px;background:#fbfcfd}.drop{border:1.5px dashed #adc1d8;border-radius:12px;padding:16px;background:#fff}.drop.drag{border-color:var(--b);background:#f4f9ff}.ico{width:38px;height:38px;border-radius:10px;background:#edf4fb;display:grid;place-items:center;font-size:20px}.uploadrow{display:flex;align-items:center;gap:12px}.fileinput{display:block;width:100%;margin-top:12px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-size:13px;color:var(--ink)}.fileinput::file-selector-button{border:0;border-radius:8px;padding:9px 12px;margin-right:12px;background:var(--b);color:#fff;font-weight:700;cursor:pointer}.file{margin-left:auto;font-size:12px;color:var(--b);max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 textarea{width:100%;min-height:64px;margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical}.actions{display:flex;gap:10px;align-items:center;margin-top:10px}.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer}.primary{background:var(--b);color:#fff}.secondary{background:#eef3f8;color:var(--ink)}.download{background:var(--g);color:white;text-decoration:none;display:inline-block;margin-top:10px}
 table.preview{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}table.preview th,table.preview td{border:1px solid #ccd6e2;padding:6px;vertical-align:top}table.preview th{background:#eef4fa}
 .small{font-size:11px;color:var(--mut)}.spin{display:none;width:18px;height:18px;border:2px solid #d1ddea;border-top-color:var(--b);border-radius:50%;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
@@ -43,8 +43,10 @@ table.preview{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px
 <div class="head"><b>Hồ sơ xử lý</b><span>.docx, .xlsx, .xls</span></div>
 <section class="msgs" id="msgs"><div class="bubble bot">Vui lòng tải file Word hoặc Excel chứa thông tin dự án/công trình và các hành vi vi phạm.</div></section>
 <section class="comp">
-<div class="drop" id="drop" role="button" tabindex="0"><div class="ico">⇧</div><div><b>Chọn file hồ sơ từ máy tính</b><div class="small">Hỗ trợ .docx, .xlsx, .xls · Có thể kéo thả file vào đây</div></div><div class="file" id="fn">Chưa chọn file</div></div>
-<input id="file" type="file" accept=".docx,.xlsx,.xls,.doc" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+<div class="drop" id="drop">
+  <div class="uploadrow"><div class="ico">⇧</div><div><b>Chọn file hồ sơ từ máy tính</b><div class="small">Bấm nút “Chọn tệp/Choose File” bên dưới hoặc kéo thả file vào khung này</div></div><div class="file" id="fn">Chưa chọn file</div></div>
+  <input id="file" class="fileinput" type="file" accept=".docx,.xlsx,.xls">
+</div>
 <textarea id="sup" placeholder="Thông tin bổ sung nếu hệ thống yêu cầu (ví dụ: chủ thể là chủ đầu tư/nhà thầu/tư vấn giám sát; loại công trình; vai trò của đơn vị...)"></textarea>
 <div class="actions"><button class="btn primary" id="go">Phân tích & tạo kết quả</button><button class="btn secondary" id="tpl">Tải mẫu Excel</button><div class="spin" id="spin"></div></div>
 </section>
@@ -67,11 +69,16 @@ function setFile(file){
   bubble('Đã nhận file: '+current.name+'\nBấm “Phân tích & tạo kết quả” để xử lý.','user');
 }
 $('file').addEventListener('change',e=>setFile(e.target.files&&e.target.files[0]));
-$('drop').addEventListener('click',()=>{$('file').value='';$('file').click()});
-$('drop').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').value='';$('file').click()}});
-$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').style.borderColor='#0d5ea6'});
-$('drop').addEventListener('dragleave',()=>{$('drop').style.borderColor=''});
-$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').style.borderColor='';const file=e.dataTransfer.files&&e.dataTransfer.files[0];if(file)setFile(file)});
+$('drop').addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();$('drop').classList.add('drag')});
+$('drop').addEventListener('dragleave',e=>{e.preventDefault();e.stopPropagation();$('drop').classList.remove('drag')});
+$('drop').addEventListener('drop',e=>{
+  e.preventDefault();e.stopPropagation();$('drop').classList.remove('drag');
+  const file=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+  if(!file)return;
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(!['docx','xlsx','xls'].includes(ext)){bubble('Định dạng file chưa được hỗ trợ. Vui lòng dùng .docx, .xlsx hoặc .xls.','warn');return}
+  setFile(file);
+});
 function bubble(t,c='bot'){const d=document.createElement('div');d.className='bubble '+c;d.textContent=t;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
 function norm(s=''){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim()}
 function parseDate(v){if(v instanceof Date)return v; if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);return d?new Date(d.y,d.m-1,d.d):null} const s=String(v||'').trim(); let m=s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(m)return new Date(+m[3],+m[2]-1,+m[1]); m=s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]); return null}
