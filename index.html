@@ -43,15 +43,35 @@ table.preview{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px
 <div class="head"><b>Hồ sơ xử lý</b><span>.docx, .xlsx, .xls</span></div>
 <section class="msgs" id="msgs"><div class="bubble bot">Vui lòng tải file Word hoặc Excel chứa thông tin dự án/công trình và các hành vi vi phạm.</div></section>
 <section class="comp">
-<label class="drop" for="file"><div class="ico">⇧</div><div><b>Tải file hồ sơ</b><div class="small">Chọn Word hoặc Excel</div></div><div class="file" id="fn">Chưa chọn file</div></label>
-<input id="file" type="file" accept=".docx,.xlsx,.xls" hidden>
+<div class="drop" id="drop" role="button" tabindex="0"><div class="ico">⇧</div><div><b>Chọn file hồ sơ từ máy tính</b><div class="small">Hỗ trợ .docx, .xlsx, .xls · Có thể kéo thả file vào đây</div></div><div class="file" id="fn">Chưa chọn file</div></div>
+<input id="file" type="file" accept=".docx,.xlsx,.xls,.doc" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 <textarea id="sup" placeholder="Thông tin bổ sung nếu hệ thống yêu cầu (ví dụ: chủ thể là chủ đầu tư/nhà thầu/tư vấn giám sát; loại công trình; vai trò của đơn vị...)"></textarea>
 <div class="actions"><button class="btn primary" id="go">Phân tích & tạo kết quả</button><button class="btn secondary" id="tpl">Tải mẫu Excel</button><div class="spin" id="spin"></div></div>
 </section>
 </main></div>
 <script>
 const $=id=>document.getElementById(id), msgs=$('msgs'); let current=null, parsed=[];
-$('file').addEventListener('change',()=>{current=$('file').files[0]||null;$('fn').textContent=current?current.name:'Chưa chọn file'});
+function setFile(file){
+  current=file||null;
+  if(!current){$('fn').textContent='Chưa chọn file';return}
+  const ext=(current.name.split('.').pop()||'').toLowerCase();
+  $('fn').textContent=current.name+' · '+Math.max(1,Math.round(current.size/1024))+' KB';
+  if(ext==='doc'){
+    bubble('Đã chọn file: '+current.name+'\n\nFile .doc (Word 97–2003) chưa đọc trực tiếp được trên trình duyệt. Hãy mở file bằng Word → Save As/Lưu thành → chọn .docx rồi tải lại.','warn');
+    return;
+  }
+  if(!['docx','xlsx','xls'].includes(ext)){
+    bubble('Định dạng file chưa được hỗ trợ. Vui lòng dùng .docx, .xlsx hoặc .xls.','warn');
+    return;
+  }
+  bubble('Đã nhận file: '+current.name+'\nBấm “Phân tích & tạo kết quả” để xử lý.','user');
+}
+$('file').addEventListener('change',e=>setFile(e.target.files&&e.target.files[0]));
+$('drop').addEventListener('click',()=>{$('file').value='';$('file').click()});
+$('drop').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('file').value='';$('file').click()}});
+$('drop').addEventListener('dragover',e=>{e.preventDefault();$('drop').style.borderColor='#0d5ea6'});
+$('drop').addEventListener('dragleave',()=>{$('drop').style.borderColor=''});
+$('drop').addEventListener('drop',e=>{e.preventDefault();$('drop').style.borderColor='';const file=e.dataTransfer.files&&e.dataTransfer.files[0];if(file)setFile(file)});
 function bubble(t,c='bot'){const d=document.createElement('div');d.className='bubble '+c;d.textContent=t;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
 function norm(s=''){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim()}
 function parseDate(v){if(v instanceof Date)return v; if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);return d?new Date(d.y,d.m-1,d.d):null} const s=String(v||'').trim(); let m=s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(m)return new Date(+m[3],+m[2]-1,+m[1]); m=s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]); return null}
@@ -65,7 +85,17 @@ function score(q,item){const a=new Set(norm(q).split(' ').filter(x=>x.length>2))
 function findRule(r){const dec=applicableDecree(r.end); if(!dec)return {missing:'Không xác định được ngày kết thúc hành vi để lựa chọn văn bản xử phạt.'}; const list=LEGAL_DATA.filter(x=>x.decree===dec); let ranked=list.map(x=>({x,s:score(r.desc+' '+(r.subject||'')+' '+$('sup').value,x)})).sort((a,b)=>b.s-a.s); if(!ranked.length||ranked[0].s<.42)return {missing:'Chưa đủ căn cứ để ghép mô tả hành vi với hành vi pháp lý trong cơ sở dữ liệu. Đề nghị mô tả cụ thể hơn hành vi và vai trò/chủ thể thực hiện.'}; if(ranked[1]&&ranked[0].s-ranked[1].s<.06&&ranked[0].s<.72)return {missing:'Mô tả có thể tương ứng nhiều hành vi pháp lý. Đề nghị bổ sung vai trò của chủ thể và chi tiết hành vi để phân loại chính xác.'}; return {rule:ranked[0].x,confidence:ranked[0].s}}
 function authority(fine){const nums=(fine.match(/[\d\.]+/g)||[]).map(s=>+s.replace(/\./g,''));const max=Math.max(...nums,0); if(max<=500000000)return 'Chủ tịch UBND cấp xã'; if(max<=800000000)return 'Giám đốc Sở Xây dựng'; return 'Chủ tịch UBND cấp tỉnh'}
 function limitation(stop,years=2){const d=parseDate(stop);if(!d)return 'Chưa đủ dữ liệu';const exp=new Date(d);exp.setFullYear(exp.getFullYear()+years);const now=new Date();return now<=exp?'Còn thời hiệu – hết thời hiệu ngày '+fmt(exp):'Hết thời hiệu từ ngày '+fmt(exp)}
-async function analyze(){if(!current){bubble('Đề nghị cung cấp bổ sung thông tin.\n\nChưa có file hồ sơ Word/Excel.','warn');return} $('go').disabled=true;$('spin').style.display='block';try{const ext=current.name.split('.').pop().toLowerCase(); parsed=ext==='docx'?await parseWord(current):await parseExcel(current);if(!parsed.length){bubble('Đề nghị cung cấp bổ sung thông tin.\n\nKhông đọc được các trường dữ liệu trong file. Hãy dùng file Excel theo mẫu hoặc Word có tiêu đề trường rõ ràng.','warn');return}
+async function analyze(){
+if(!current && $('file').files && $('file').files[0]) current=$('file').files[0];
+if(!current){bubble('Đề nghị cung cấp bổ sung thông tin.\n\nChưa có file hồ sơ Word/Excel. Hãy bấm vùng “Chọn file hồ sơ từ máy tính” và chọn file.','warn');return}
+const ext0=(current.name.split('.').pop()||'').toLowerCase();
+if(ext0==='doc'){bubble('File .doc cũ chưa được hỗ trợ. Hãy mở bằng Microsoft Word và lưu lại thành .docx rồi tải lại.','warn');return}
+if(!['docx','xlsx','xls'].includes(ext0)){bubble('Định dạng file chưa được hỗ trợ. Vui lòng dùng .docx, .xlsx hoặc .xls.','warn');return}
+$('go').disabled=true;$('spin').style.display='block';try{
+const ext=current.name.split('.').pop().toLowerCase();
+if(ext==='docx' && !window.mammoth) throw new Error('Không tải được thư viện đọc Word. Hãy tải lại trang bằng Ctrl+F5.');
+if((ext==='xlsx'||ext==='xls') && !window.XLSX) throw new Error('Không tải được thư viện đọc Excel. Hãy tải lại trang bằng Ctrl+F5.');
+parsed=ext==='docx'?await parseWord(current):await parseExcel(current);if(!parsed.length){bubble('Đề nghị cung cấp bổ sung thông tin.\n\nKhông đọc được các trường dữ liệu trong file. Hãy dùng file Excel theo mẫu hoặc Word có tiêu đề trường rõ ràng.','warn');return}
 let missing=[];parsed.forEach((r,i)=>{['project','desc','end','stop'].forEach(k=>{if(!String(r[k]||'').trim())missing.push('Hành vi '+(i+1)+' thiếu '+({project:'Tên dự án/công trình',desc:'Mô tả hành vi vi phạm',end:'Thời điểm kết thúc hành vi',stop:'Thời điểm chấm dứt hành vi'}[k]))})});if(missing.length){bubble('Đề nghị cung cấp bổ sung thông tin.\n\n'+missing.join('\n'),'warn');return}
 let results=[], asks=[];parsed.forEach((r,i)=>{const f=findRule(r);if(f.missing)asks.push('Hành vi '+(i+1)+': '+f.missing);else results.push({i:i+1,r,rule:f.rule})});if(asks.length){bubble('Đề nghị cung cấp bổ sung thông tin.\n\n'+asks.join('\n'),'warn');return}
 renderPreview(results);await makeDocx(results)}catch(e){console.error(e);bubble('Có lỗi khi xử lý file: '+e.message,'warn')}finally{$('go').disabled=false;$('spin').style.display='none'}}
